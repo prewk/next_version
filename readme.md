@@ -19,9 +19,9 @@ OPENSSL_ROOT_DIR=/usr/local/opt/openssl cargo build
 ````sh
 next_version # In a git repo, defaults to current path
 next_version /path/to/repo # Repo path
-next_version --major-regexp ":major" # Match ":major" against commit messages for major bumps
-next_version --minor-regexp ":feature" # Match ":feature" against commit messages for minor bumps
-next_version --patch-regexp ":fix" # Match ":fix" against commit messages for patch bumps
+next_version --major-regexp "_major_" # Match "_major_" against commit messages for major bumps
+next_version --minor-regexp "_feature_" # Match "_feature_" against commit messages for minor bumps
+next_version --patch-regexp "_fix_" # Match "_fix_" against commit messages for patch bumps
 ````
 
 # Rules
@@ -37,3 +37,9 @@ next_version --patch-regexp ":fix" # Match ":fix" against commit messages for pa
 * If the current version is `1.3.0+1`, and no bumps are detected, the next suggested version will be `1.3.0+2`.
 * If the current version is `1.3.0+2`, and a patch bump is detected, the next suggested version will be `1.3.1`.
 * If the current version is `1.3.1` and _no commit messages are found after that version_, the command will exit with a non-zero status.
+
+## Default bump match patterns
+
+* `:major:` for major bumps
+* `:minor:` for minor bumps
+* `:patch:` for patch bumps
