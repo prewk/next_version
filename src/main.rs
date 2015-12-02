@@ -200,7 +200,7 @@ fn main() {
     let bumps = detect_bumps(&repo, &highest_version, &major_regexp, &minor_regexp, &patch_regexp);
     // If no objects were walked, we don't want to tag the release at all
     if bumps.objects == 0 {
-        process::exit(0);
+        process::exit(1);
     }
 
     // Clone to a new version
