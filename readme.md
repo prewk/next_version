@@ -2,6 +2,10 @@
 
 A really crappy [GitVersion](https://github.com/GitTools/GitVersion) made in Rust. If you use this in production, you're nuts.
 
+# What's it for?
+
+Tagging up releases automatically on CI servers.
+
 # Building on a Mac
 
 The `git2` crate needs `cmake` (it's on brew), and I had to supply the builder with `OPENSSL_ROOT_DIR` or it wouldn't compile [libgit2](https://github.com/libgit2/libgit2) Correctly:
