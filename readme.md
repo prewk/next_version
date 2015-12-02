@@ -22,10 +22,10 @@ next_version --patch-regexp ":fix" # Match ":fix" against commit messages for pa
 
 # Rules
 
-1. Finds highest current semver version tag
-2. Checks all commit messages from that point to look for bump messages
-3. If none were found, metadata increments a build number
-4. Prints out the suggested name for the next version's tag
+1. Finds highest current semver version tag.
+2. Checks all commit messages from that point to look for bump messages.
+3. If none were found, metadata increments a build number.
+4. Prints out the suggested name for the next version's tag.
 
 * If the repo lacks semver tags completely, the next suggested version will be `0.0.1`.
 * If the current version is `1.2.3`, and a commit message matching a minor bump is detected, the next suggested version will be `1.3.0`.

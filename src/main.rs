@@ -160,17 +160,17 @@ fn main() {
     // Major regular expressions
     let major_regexp = match matches.opt_str("m") {
         Some(r) => r,
-        None => r"_MAJOR_".to_string()
+        None => r":major:".to_string()
     };
     // Minor regular expressions
     let minor_regexp = match matches.opt_str("m") {
         Some(r) => r,
-        None => r"_MINOR_".to_string()
+        None => r":minor:".to_string()
     };
     // Patch regular expressions
     let patch_regexp = match matches.opt_str("m") {
         Some(r) => r,
-        None => r"_PATCH_".to_string()
+        None => r":patch:".to_string()
     };
 
     // Repository directory
