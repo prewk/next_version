@@ -1,6 +1,7 @@
 extern crate semver;
 extern crate git2;
 extern crate regex;
+extern crate getopts;
 
 use std::process;
 use semver::Version;
@@ -10,7 +11,10 @@ use git2::SORT_TIME;
 use git2::SORT_REVERSE;
 use regex::Regex;
 use std::io::{self, Write};
+use std::env;
+use getopts::Options;
 
+/// Extracts build number metadata from a version if available and increments it
 fn get_metadata(version: &Version) -> u64 {
     let mut build: u64;
 
@@ -25,6 +29,7 @@ fn get_metadata(version: &Version) -> u64 {
     return build;
 }
 
+#[derive(Debug)]
 struct Bumps {
     objects: u64,
     major: bool,
@@ -32,7 +37,8 @@ struct Bumps {
     patch: bool
 }
 
-fn detect_bumps(repo: &Repository, start_version: &Version) -> Bumps {
+/// Walk the repository from the given version up to HEAD and find all commit messages with bumps
+fn detect_bumps(repo: &Repository, start_version: &Version, major_pattern: &str, minor_pattern: &str, patch_pattern: &str) -> Bumps {
     // Extract the version's object
     let object = repo.revparse_single(&start_version.to_string()).unwrap();
     let sha = object.id();
@@ -56,9 +62,9 @@ fn detect_bumps(repo: &Repository, start_version: &Version) -> Bumps {
     };
 
     // Set up reg-expes
-    let major_re = Regex::new(r"_MAJOR_").unwrap();
-    let minor_re = Regex::new(r"_MINOR_").unwrap();
-    let patch_re = Regex::new(r"_PATCH_").unwrap();
+    let major_re = Regex::new(major_pattern).unwrap();
+    let minor_re = Regex::new(minor_pattern).unwrap();
+    let patch_re = Regex::new(patch_pattern).unwrap();
 
     for sha in revwalker {
         // Count objects
@@ -88,11 +94,11 @@ fn detect_bumps(repo: &Repository, start_version: &Version) -> Bumps {
     return bumps;
 }
 
-fn main() {
-
-    let repo = Repository::open("./../test_repo").unwrap();
-
+/// Get the highest version from the repo tags
+fn get_highest_version(repo: &Repository) -> Option<Version> {
+    // Get the tags
     let tags = repo.tag_names(None).unwrap();
+    // Prepare a versions vector
     let mut versions = Vec::new();
 
     // Iterate through the tags
@@ -105,87 +111,129 @@ fn main() {
         }
     }
 
-    // Sort tags
-    versions.sort_by(|a, b| a.cmp(b));
+    // Were there any versions at all?
+    if versions.len() > 0 {
+        // Yep, sort them
+        versions.sort_by(|a, b| a.cmp(b));
+        // Get the highest
+        let highest_version = versions.last().unwrap();
+        // Return a clone of it
+        Some(highest_version.clone())
+    } else {
+        // Nope
+        None
+    }
+}
 
-    // Extract highest version
-    let highest_version = versions.last().unwrap();
-    let results = repo.revparse_single(&highest_version.to_string()).unwrap();
-    let highest_sha = results.id();
+/// Help printout using getopts
+fn print_usage(executable_path: &str, opts: Options) {
+    let brief = format!("Usage: {} [REPOSITORY] [options]", executable_path);
+    print!("{}", opts.usage(&brief));
+}
 
-    let mut rw = repo.revwalk().unwrap();
-    rw.set_sorting(SORT_TOPOLOGICAL | SORT_TIME | SORT_REVERSE);
-    rw.push_head().unwrap();
+fn main() {
+    // Handle arguments
+    let args: Vec<String> = env::args().collect();
+    // Extract the executable's path
+    let executable_path = args[0].clone();
 
-    // Hide the highest versions commit & everything older
-    rw.hide(highest_sha).unwrap();
+    // Set up the options
+    let mut opts = Options::new();
+    opts.optopt("m", "major-regexp", "set major regexp pattern", "PATTERN");
+    opts.optopt("f", "minor-regexp", "set minor regexp pattern", "PATTERN");
+    opts.optopt("p", "patch-regexp", "set patch regexp pattern", "PATTERN");
+    // Help flag
+    opts.optflag("h", "help", "print this help menu");
 
-    let mut major_bumps = false;
-    let mut minor_bumps = false;
-    let mut patch_bumps = false;
+    // Parse the arguments, crash on illegal arguments
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => { m }
+        Err(f) => { panic!(f.to_string()) }
+    };
 
-    let major_re = Regex::new(r"_MAJOR_").unwrap();
-    let minor_re = Regex::new(r"_MINOR_").unwrap();
-    let patch_re = Regex::new(r"_PATCH_").unwrap();
-
-    // Step through the history
-    let mut i = 0;
-
-    for sha in rw {
-        i += 1;
-        let sha_str = sha.to_string();
-        let object = repo.revparse_single(&sha_str).unwrap();
-        match object.as_commit() {
-            Some(commit) => {
-                let message = commit.message().unwrap();
-
-                if major_re.is_match(message) {
-                    major_bumps = true;
-                } else if minor_re.is_match(message) {
-                    minor_bumps = true;
-                } else if patch_re.is_match(message) {
-                    patch_bumps = true;
-                }
-            }
-            None => {}
-        }
+    // Print help
+    if matches.opt_present("h") {
+        print_usage(&executable_path, opts);
+        return;
     }
 
-    if i == 0 {
+    // Major regular expressions
+    let major_regexp = match matches.opt_str("m") {
+        Some(r) => r,
+        None => r"_MAJOR_".to_string()
+    };
+    // Minor regular expressions
+    let minor_regexp = match matches.opt_str("m") {
+        Some(r) => r,
+        None => r"_MINOR_".to_string()
+    };
+    // Patch regular expressions
+    let patch_regexp = match matches.opt_str("m") {
+        Some(r) => r,
+        None => r"_PATCH_".to_string()
+    };
+
+    // Repository directory
+    let repo_dir = if !matches.free.is_empty() {
+        matches.free[0].clone()
+    } else {
+        ".".to_string()
+    };
+
+    // Open the repo
+    let repo = Repository::open(repo_dir).unwrap();
+    // Retrieve the highest version
+    let highest_version = match get_highest_version(&repo) {
+        // Version found
+        Some(version) => version,
+        // Fallback to 0.0.1
+        None => Version {
+            major: 0,
+            minor: 0,
+            patch: 1,
+            pre: vec!(),
+            build: vec!()
+        }
+    };
+
+    // Detect commit message bumps
+    let bumps = detect_bumps(&repo, &highest_version, &major_regexp, &minor_regexp, &patch_regexp);
+    // If no objects were walked, we don't want to tag the release at all
+    if bumps.objects == 0 {
         process::exit(0);
     }
 
+    // Clone to a new version
     let mut new_version = highest_version.clone();
 
-    if patch_bumps {
+    // Perform bumps
+    if bumps.patch {
         new_version.increment_patch();
     }
-    if minor_bumps {
+    if bumps.minor {
         new_version.increment_minor();
     }
-    if major_bumps {
+    if bumps.major {
         new_version.increment_major();
     }
 
-    let mut build = 0;
-    if !patch_bumps && !minor_bumps && !major_bumps {
-        if new_version.build.len() == 1 {
-            let build_id = &new_version.build[0];
-            build = build_id.to_string().parse::<u64>().unwrap();
-            build = build + 1;
-        } else {
-            build = 1;
-        }
+    // Handle build metadata
+    let build;
+    if !bumps.patch && !bumps.minor && !bumps.major {
+        build = get_metadata(&new_version);
+    } else {
+        build = 0;
     }
 
+    // Construct a version name
     let output_version;
     if build == 0 {
+        // If build metadata was 0, do not include it in the version name
         output_version = format!("{}.{}.{}", new_version.major, new_version.minor, new_version.patch);
     } else {
         output_version = format!("{}.{}.{}+{}", new_version.major, new_version.minor, new_version.patch, build);
     }
 
-    let output_version_u8 = output_version.as_bytes();
-
-    io::stdout().write(output_version_u8).unwrap();
+    // Send to stdout
+    io::stdout().write(output_version.as_bytes()).unwrap();
 }

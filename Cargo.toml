@@ -7,3 +7,4 @@ authors = ["Oskar Thornblad <oskar.thornblad@gmail.com>"]
 semver = "0.2.0"
 git2 = "0.3"
 regex = "^0.1.41"
+getopts = "0.2"
