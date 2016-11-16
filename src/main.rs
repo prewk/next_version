@@ -144,6 +144,10 @@ fn main() {
     opts.optopt("p", "patch-regexp", "set patch regexp pattern", "PATTERN");
     // Help flag
     opts.optflag("h", "help", "print this help menu");
+    // Force-bump options
+    opts.optflag("M", "bump-major", "force bump major");
+    opts.optflag("F", "bump-minor", "force bump minor");
+    opts.optflag("P", "bump-patch", "force bump patch");
 
     // Parse the arguments, crash on illegal arguments
     let matches = match opts.parse(&args[1..]) {
@@ -163,15 +167,20 @@ fn main() {
         None => r":major:".to_string()
     };
     // Minor regular expressions
-    let minor_regexp = match matches.opt_str("m") {
+    let minor_regexp = match matches.opt_str("f") {
         Some(r) => r,
         None => r":minor:".to_string()
     };
     // Patch regular expressions
-    let patch_regexp = match matches.opt_str("m") {
+    let patch_regexp = match matches.opt_str("p") {
         Some(r) => r,
         None => r":patch:".to_string()
     };
+
+    // Force-bumps
+    let force_major = matches.opt_present("M");
+    let force_minor = matches.opt_present("F");
+    let force_patch = matches.opt_present("P");
 
     // Repository directory
     let repo_dir = if !matches.free.is_empty() {
@@ -207,13 +216,13 @@ fn main() {
     let mut new_version = highest_version.clone();
 
     // Perform bumps
-    if bumps.patch {
+    if bumps.patch || force_patch {
         new_version.increment_patch();
     }
-    if bumps.minor {
+    if bumps.minor || force_minor {
         new_version.increment_minor();
     }
-    if bumps.major {
+    if bumps.major || force_major {
         new_version.increment_major();
     }
 
