@@ -228,7 +228,7 @@ fn main() {
 
     // Handle build metadata
     let build;
-    if !bumps.patch && !bumps.minor && !bumps.major {
+    if !bumps.patch && !bumps.minor && !bumps.major && !force_patch && !force_minor && !force_major {
         build = get_metadata(&new_version);
     } else {
         build = 0;
